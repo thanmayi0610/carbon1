@@ -170,6 +170,250 @@ app.get('/professors/:professorId/proctorships', async (c) => {
     return c.json({ error: "Internal Server Error" }, 500);
   }
 });
+//7. Update student details
+app.patch('/students/:studentId', async (c) => {
+  try {
+    const studentId = c.req.param('studentId');
+    const data = await c.req.json(); 
+    const existingStudent = await prismaClient.student.findUnique({
+      where: { id: studentId },
+    });
+
+    if (!existingStudent) {
+      return c.json({ error: "Student not found" }, 404);
+    }
+      const updatedStudent = await prismaClient.student.update({
+      where: { id: studentId },
+      data, 
+    });
+
+    return c.json({ message: "Student updated successfully", student: updatedStudent });
+  } catch (error) {
+    console.error("Error updating student:", error);
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
+});
+
+
+//8.Update professor details
+app.patch('/professors/:professorId', async (c) => {
+  try {
+    const professorId = c.req.param('professorId');
+    const data = await c.req.json(); 
+      const existingProfessor = await prismaClient.professor.findUnique({
+      where: { id: professorId },
+    });
+
+    if (!existingProfessor) {
+      return c.json({ error: "Professor not found" }, 404);
+    }
+      const updatedProfessor = await prismaClient.professor.update({
+      where: { id: professorId },
+      data, 
+    });
+
+    return c.json({ message: "Professor updated successfully", professor: updatedProfessor });
+  } catch (error) {
+    console.error("Error updating professor:", error);
+    return c.json({ error: "Internal Server Error" }, 500);
+  }
+});
+
+
+
+// DELETE /students/:studentId - Deletes a student by their ID
+app.delete('/students/:studentId', async (c) => {
+try {
+  const studentId = c.req.param('studentId');
+  const existingStudent = await prismaClient.student.findUnique({
+    where: { id: studentId },
+  });
+
+  if (!existingStudent) {
+    return c.json({ error: "Student not found" }, 404);
+  }
+  await prismaClient.student.delete({
+    where: { id: studentId },
+  });
+
+  return c.json({ message: "Student deleted successfully" });
+} catch (error) {
+  console.error("Error deleting student:", error);
+  return c.json({ error: "Internal Server Error" }, 500);
+}
+});
+
+// DELETE /professors/:professorId - Deletes a professor by their ID
+app.delete('/professors/:professorId', async (c) => {
+try {
+  const professorId = c.req.param('professorId');
+  const existingProfessor = await prismaClient.professor.findUnique({
+    where: { id: professorId },
+  });
+
+  if (!existingProfessor) {
+    return c.json({ error: "Professor not found" }, 404);
+  }
+  await prismaClient.professor.delete({
+    where: { id: professorId },
+  });
+
+  return c.json({ message: "Professor deleted successfully" });
+} catch (error) {
+  console.error("Error deleting professor:", error);
+  return c.json({ error: "Internal Server Error" }, 500);
+}
+});
+
+
+
+//11.  Assigns a student under the proctorship of a professor
+app.post('/professors/:professorId/proctorships', async (c) => {
+try {
+  const professorId = c.req.param('professorId');
+  const { studentId } = await c.req.json(); 
+  const existingProfessor = await prismaClient.professor.findUnique({
+    where: { id: professorId },
+  });
+
+  if (!existingProfessor) {
+    return c.json({ error: "Professor not found" }, 404);
+  }
+  const existingStudent = await prismaClient.student.findUnique({
+    where: { id: studentId },
+  });
+
+  if (!existingStudent) {
+    return c.json({ error: "Student not found" }, 404);
+  }
+  await prismaClient.student.update({
+    where: { id: studentId },
+    data: { proctorId: professorId },
+  });
+
+  return c.json({ message: "Student assigned to professor successfully" });
+} catch (error) {
+  console.error("Error assigning student to professor:", error);
+  return c.json({ error: "Internal Server Error" }, 500);
+}
+});
+
+//12. Get library membership details for a student
+app.get('/students/:studentId/library-membership', async (c) => {
+try {
+  const studentId = c.req.param('studentId');
+  const studentWithMembership = await prismaClient.student.findUnique({
+    where: { id: studentId },
+    include: { libraryMembership: true },
+  });
+
+  if (!studentWithMembership) {
+    return c.json({ error: 'Student not found' }, 404);
+  }
+  if (!studentWithMembership.libraryMembership) {
+    return c.json({ error: 'Library membership not found for this student' }, 404);
+  }
+
+  return c.json(studentWithMembership.libraryMembership);
+} catch (error) {
+  console.error('Error fetching library membership:', error);
+  return c.json({ error: 'Internal server error' }, 500);
+}
+});
+
+
+
+//13. Create a library membership for a student
+app.post('/students/:studentId/library-membership', async (c) => {
+try {
+  const studentId = c.req.param('studentId');
+  const { issueDate, expiryDate } = await c.req.json();
+  const student = await prismaClient.student.findUnique({
+    where: { id: studentId },
+    include: { libraryMembership: true },
+  });
+
+  if (!student) {
+    return c.json({ error: 'Student not found' }, 404);
+  }
+  if (student.libraryMembership) {
+    return c.json({ error: 'Library membership already exists for this student' }, 400);
+  }
+  const newMembership = await prismaClient.libraryMembership.create({
+    data: {
+      studentId,
+      issueDate: new Date(issueDate),
+      expiryDate: new Date(expiryDate),
+    },
+  });
+
+  return c.json(newMembership, 201);
+} catch (error) {
+  console.error('Error creating library membership:', error);
+  return c.json({ error: 'Internal server error' }, 500);
+}
+});
+
+
+
+//14. Update library membership details for a student
+app.patch('/students/:studentId/library-membership', async (c) => {
+try {
+  const studentId = c.req.param('studentId');
+  const { issueDate, expiryDate } = await c.req.json();
+  const student = await prismaClient.student.findUnique({
+    where: { id: studentId },
+    include: { libraryMembership: true },
+  });
+
+  if (!student) {
+    return c.json({ error: 'Student not found' }, 404);
+  }
+  if (!student.libraryMembership) {
+    return c.json({ error: 'Library membership not found for this student' }, 404);
+  }
+  const updatedMembership = await prismaClient.libraryMembership.update({
+    where: { studentId },
+    data: {
+      issueDate: issueDate ? new Date(issueDate) : student.libraryMembership.issueDate,
+      expiryDate: expiryDate ? new Date(expiryDate) : student.libraryMembership.expiryDate,
+    },
+  });
+
+  return c.json(updatedMembership, 200);
+} catch (error) {
+  console.error('Error updating library membership:', error);
+  return c.json({ error: 'Internal server error' }, 500);
+}
+});
+
+
+//15. Delete library membership for a student
+app.delete("/students/:studentId/library-membership", async (c) => {
+try {
+  const studentId = c.req.param("studentId");
+  const student = await prismaClient.student.findUnique({
+    where: { id: studentId },
+    include: { libraryMembership: true },
+  });
+if (!student) {
+    return c.json({ error: "Student not found" }, 404);
+  }
+
+  if (!student.libraryMembership) {
+    return c.json({ error: "Library membership not found for this student" }, 404);
+  }
+
+  await prismaClient.libraryMembership.delete({
+    where: { studentId },
+  });
+
+  return c.json({ message: "Library membership deleted successfully" }, 200);
+} catch (error) {
+  console.error("Error deleting library membership:", error);
+  return c.json({ error: "Failed to delete library membership" }, 500);
+}
+});
 
 serve(app, (info) => {
   console.log(`Server is running on http://localhost:${info.port}`);
