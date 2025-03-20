@@ -12,3 +12,37 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+model Student {
+  id                  String             @id @default(uuid())
+  name                String
+  dateofbirth         DateTime
+  libraryMembership   LibraryMembership?
+  libraryMembershipId String?            @unique
+  aadharNumber        String             @unique
+  proctor             Professor          @relation("ProfessorToStudent", fields: [proctorId], references: [id])
+  proctorId           String
+}
+
+model Professor {
+  id           String    @id @default(uuid())
+  name         String
+  seniority    Seniority
+  aadharNumber String    @unique
+  students     Student[] @relation("ProfessorToStudent") // One-to-Many Relationship
+}
+
+model LibraryMembership {
+  id         String   @id @default(uuid())
+  student    Student  @relation(fields: [studentId], references: [id])
+  studentId  String   @unique // Unique ensures one membership per student
+  issueDate  DateTime
+  expiryDate DateTime
+}
+
+enum Seniority {
+  JUNIOR
+  SENIOR
+  ASSOCIATE
+  HEAD
+}
+
